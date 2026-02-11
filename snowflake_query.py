@@ -100,5 +100,5 @@ axes[1, 2].text(0.1, 0.5, summary_text, fontsize=12, family='monospace',
                 verticalalignment='center')
 
 plt.tight_layout()
-plt.savefig('/Users/Alfred.Lee/Documents/github/clip_results_visualization.png', dpi=300, bbox_inches='tight')
-print("\nVisualization saved to: clip_results_visualization.png")
+plt.savefig('/Users/Alfred.Lee/Documents/github/visualizations/clip_results_visualization.png', dpi=300, bbox_inches='tight')
+print("\nVisualization saved to: visualizations/clip_results_visualization.png")
