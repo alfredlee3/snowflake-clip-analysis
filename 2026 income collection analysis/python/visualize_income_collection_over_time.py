@@ -14,16 +14,27 @@ conn = snowflake.connector.connect(
 
 print("Running PIE Income Collection Over Time Analysis...")
 
-# Load time series data (April 2025 cohort)
+# Load time series data - STATEMENT-LEVEL (April 2025 cohort)
 with open('/Users/Alfred.Lee/Documents/github/pie_income_collection_over_time.sql', 'r') as f:
-    query_time = f.read()
+    query_time_stmt = f.read()
 
 cursor = conn.cursor()
-cursor.execute(query_time)
+cursor.execute(query_time_stmt)
 df_time = pd.DataFrame(cursor.fetchall(), columns=[col[0] for col in cursor.description])
 cursor.close()
 
-print("Time series data loaded. Loading cohort comparison data...")
+print("Statement-level time series loaded. Loading account-level overall data...")
+
+# Load account-level data for Overall Stmt 18+ line
+with open('/Users/Alfred.Lee/Documents/github/pie_income_collection_over_time_account_level.sql', 'r') as f:
+    query_account_level = f.read()
+
+cursor = conn.cursor()
+cursor.execute(query_account_level)
+df_account_level = pd.DataFrame(cursor.fetchall(), columns=[col[0] for col in cursor.description])
+cursor.close()
+
+print("Account-level data loaded. Loading cohort comparison data...")
 
 # Load cohort comparison data (Mar-May 2025)
 with open('/Users/Alfred.Lee/Documents/github/pie_income_cohort_comparison.sql', 'r') as f:
@@ -83,16 +94,71 @@ ax1.set_ylim(75, 100)
 ax1.set_xticks(range(0, 9))
 
 # Add annotation
-ax1.text(0.02, 0.02, 'Month 0 = Initial evaluation month',
+ax1.text(0.02, 0.02, 'Month N = 30-day rolling windows (0-30, 31-60, 61-90... days after PIE)',
         transform=ax1.transAxes, fontsize=8, style='italic', color='gray')
 
 # Plot 2: Cumulative PIE Income Collection Rate Over Time
 ax2 = axes[0, 1]
+
+# Track label positions to avoid overlaps
+label_positions = []
+
+def can_add_label(x, y, min_distance=3.0):
+    """Check if a label can be added without overlapping existing labels"""
+    for (lx, ly) in label_positions:
+        if abs(lx - x) < 0.5 and abs(float(ly) - float(y)) < min_distance:
+            return False
+    return True
+
+# Plot individual statement lines
 for stmt in statements:
     stmt_data = df_time[df_time['STATEMENT_NUMBER'] == stmt].sort_values('MONTH_OFFSET')
     ax2.plot(stmt_data['MONTH_OFFSET'], stmt_data['PIE_INCOME_COLLECTION_RATE_PCT'],
             marker='o', linewidth=2.5, label=f'Stmt {stmt}',
             color=statement_colors[stmt], markersize=8)
+
+    # Add labels for start and end points
+    start_val = stmt_data.iloc[0]['PIE_INCOME_COLLECTION_RATE_PCT']
+    end_val = stmt_data.iloc[-1]['PIE_INCOME_COLLECTION_RATE_PCT']
+
+    # Start label (Month 0)
+    if can_add_label(0, start_val):
+        ax2.text(0, start_val, f'{start_val:.1f}%',
+                fontsize=8, ha='right', va='center',
+                color=statement_colors[stmt], fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=statement_colors[stmt], linewidth=1, alpha=0.8))
+        label_positions.append((0, start_val))
+
+    # End label (Month 8)
+    if can_add_label(8, end_val):
+        ax2.text(8, end_val, f'{end_val:.1f}%',
+                fontsize=8, ha='left', va='center',
+                color=statement_colors[stmt], fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=statement_colors[stmt], linewidth=1, alpha=0.8))
+        label_positions.append((8, end_val))
+
+# Plot overall Stmt 18+ line (ACCOUNT-LEVEL: each account counted once)
+ax2.plot(df_account_level['MONTH_OFFSET'], df_account_level['PIE_INCOME_COLLECTION_RATE_PCT'],
+        marker='s', linewidth=3, label='Overall Stmt 18+ (Acct-Level)',
+        color='black', markersize=10, linestyle='--', alpha=0.7)
+
+# Add labels for overall line
+overall_start = df_account_level.iloc[0]['PIE_INCOME_COLLECTION_RATE_PCT']
+overall_end = df_account_level.iloc[-1]['PIE_INCOME_COLLECTION_RATE_PCT']
+
+if can_add_label(0, overall_start):
+    ax2.text(0, overall_start, f'{overall_start:.1f}%',
+            fontsize=8, ha='right', va='center',
+            color='black', fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='black', linewidth=1.5, alpha=0.9))
+    label_positions.append((0, overall_start))
+
+if can_add_label(8, overall_end):
+    ax2.text(8, overall_end, f'{overall_end:.1f}%',
+            fontsize=8, ha='left', va='center',
+            color='black', fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='black', linewidth=1.5, alpha=0.9))
+    label_positions.append((8, overall_end))
 
 ax2.set_xlabel('Months After PIE Evaluation', fontsize=11)
 ax2.set_ylabel('Cumulative PIE Income Collection Rate (%)', fontsize=11)
@@ -214,6 +280,21 @@ for stmt in statements:
     print(f"  • Final PIE income collection rate: {final_pie_rate:.1f}%")
     print(f"  • Early momentum (Month 1): {month_1_pie_rate:.1f}% of PIE accounts collected income")
     print(f"  • Late momentum (Month 1 to 8 gain): +{final_pie_rate - month_1_pie_rate:.1f}pp")
+
+print("\n" + "=" * 120)
+print("ACCOUNT-LEVEL OVERALL PERFORMANCE (April 2025 - Unique Accounts)")
+print("=" * 120)
+
+print(f"\nTotal Unique PIE Accounts (Stmt 18+): {int(df_account_level.iloc[0]['PIE_TOTAL_COUNT']):,}")
+print(f"\nMonthly Progression:")
+print(f"{'Month':<8} {'Collected':>10} {'Collection Rate':>18} {'New This Month':>18}")
+print("-" * 120)
+for _, row in df_account_level.iterrows():
+    month = f"Month {int(row['MONTH_OFFSET'])}"
+    collected = f"{int(row['PIE_INCOME_COLLECTED_BY_MONTH']):,}"
+    rate = f"{row['PIE_INCOME_COLLECTION_RATE_PCT']:.1f}%"
+    new_coll = f"{int(row['NEW_INCOME_COLLECTIONS_THIS_MONTH']):,}"
+    print(f"{month:<8} {collected:>10} {rate:>18} {new_coll:>18}")
 
 print("\n" + "=" * 120)
 print("COHORT COMPARISON - FINAL RESULTS (Mar-May 2025, Month 8)")

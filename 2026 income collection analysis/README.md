@@ -20,7 +20,9 @@ SQL queries for extracting PIE income collection data from Snowflake:
 - **`pie_income_update_tracking.sql`** - Single statement, single month analysis (simplified version)
 - **`pie_income_multi_statement_analysis.sql`** - Multi-statement comparison (Stmt 18, 26, 34, 42) for April 2025 cohort
 - **`pie_income_cohort_comparison.sql`** - Multi-month cohort comparison (Mar-May 2025)
-- **`pie_income_collection_over_time.sql`** - Monthly progression analysis (Month 0-8 after PIE)
+- **`pie_income_collection_over_time.sql`** - Monthly progression with overall success rate (includes Stmt 18, 26, 34, 42+, Overall 18+)
+- **`pie_income_collection_over_time_account_level.sql`** - Account-level analysis for specific statements
+- **`pie_income_collection_over_time_account_level_all_statements.sql`** - Account-level PIE collection rates for all statements
 
 ### `python/`
 Python scripts for running queries and generating visualizations:
@@ -29,16 +31,24 @@ Python scripts for running queries and generating visualizations:
 - **`run_multi_statement_analysis.py`** - Runs multi-statement comparison analysis
 - **`pie_income_collection_visualization.py`** - Creates 4-panel visualization for single statement
 - **`visualize_cohort_comparison.py`** - Creates cohort comparison charts (Mar-May 2025)
-- **`visualize_income_collection_over_time.py`** - Creates combined visualization:
-  - Top row: Time series (month 0-8 progression) for April 2025 cohort
-  - Bottom row: Multi-cohort comparison (Mar-May 2025) at 8 months
+- **`visualize_income_collection_over_time.py`** - Creates combined time series visualization
+- **`visualize_success_rate_over_time.py`** - Creates overall success rate chart (Approved + PIE with Income)
+- **`visualize_pie_income_account_level.py`** - Creates PIE income collection rate chart (account-level)
+- **`export_chart_data_account_level.py`** - Exports account-level data to CSV for manual analysis
 
 ### `visualizations/`
 Generated charts:
 
-- **`pie_income_collection_over_time.png`** - Main visualization showing time progression + cohort comparison
+- **`success_rate_over_time.png`** - Overall success rate progression (Approved + PIE with Income)
+- **`pie_income_collection_account_level.png`** - PIE-specific collection rates over time
+- **`pie_income_collection_over_time.png`** - Time progression + cohort comparison
 - **`pie_cohort_comparison_visualization.png`** - Detailed cohort comparison (4 panels)
 - **`pie_income_collection_visualization.png`** - Single statement deep dive
+- **`pie_income_data_account_level_all_statements.csv`** - Exported data for all statements
+
+### Documentation
+- **`CLIP_PIE_ANALYSIS_ONBOARDING_GUIDE.md`** - Comprehensive guide for analysts and AI assistants
+- **`ACCOUNT_VS_STATEMENT_LEVEL_METHODOLOGY.md`** - Methodology documentation and 30-day rolling windows explanation
 
 ## Key Findings
 
