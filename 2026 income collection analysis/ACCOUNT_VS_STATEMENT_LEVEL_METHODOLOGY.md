@@ -1,9 +1,10 @@
-# Account-Level vs Statement-Level Methodology
+# PIE Income Collection Analysis Methodology
 
 ## Summary of Changes
 
-1. Updated the "Overall Stmt 18+" line to use **account-level** methodology, where each unique account is counted only once regardless of how many statements they appear at.
-2. Changed time bucketing from **calendar months** to **30-day rolling windows** for consistent, fair comparison across all accounts.
+1. Replaced Stmt 42 with **Stmt 42+** (all statements ≥42) to capture all late-stage accounts
+2. Changed time bucketing from **calendar months** to **30-day rolling windows** for fair comparison
+3. Clarified that **ALL lines use account-level methodology** - the distinction is filtered vs aggregated populations
 
 ## Time Window Methodology: 30-Day Rolling Windows
 
@@ -26,79 +27,77 @@
 
 This could create unfair comparisons where an account with PIE on April 30th only got 1 day for "Month 0" while an account with PIE on April 1st got 30 days.
 
-## The Two Methodologies
+## Understanding the April 2025 Cohort: No Overlap
 
-### Statement-Level (Original - Individual Lines)
-**Logic**: Count each account+statement combination separately
-- Account A has PIE at Stmt 18 → Count 1
-- Account A has PIE at Stmt 26 → Count 1
-- **Total**: 2 PIE instances
+**CRITICAL INSIGHT**: In the April 2025 cohort analysis, each account appears at exactly ONE statement number.
 
-**Use Case**: Analyzing performance at specific discrete statements
+Since we filter by `statement_end_dt = '2025-04-01'` (April 2025), and statements are sequential milestones in an account's lifecycle:
+- Account A can be at Stmt 18 in April 2025 ✓
+- Account A **cannot** also be at Stmt 26 in April 2025 (would be a different calendar month)
 
-**Example Query**:
+**This means:**
+- Stmt 18, 26, 34 are **non-overlapping populations** in April 2025
+- An account appears in only one of these groups
+- There's no "double-counting" issue within the single-month cohort
+
+## The Two Analysis Approaches
+
+### 1. Specific Statement Filter (Stmt 18, 26, 34)
+**What it is**: Filter to accounts at a specific statement number only
+
+**Example**:
+- Stmt 18: 905 unique accounts at Stmt 18 in April 2025
+- Stmt 26: 140 unique accounts at Stmt 26 in April 2025
+- Stmt 34: 206 unique accounts at Stmt 34 in April 2025
+
+**These are separate, non-overlapping groups.**
+
+**SQL Pattern**:
 ```sql
--- Each row = one account at one statement
-select statement_number, count(*) as pie_instances
-from pie_accounts
-group by statement_number
+select
+    clip.account_id,
+    min(clip.evaluated_timestamp) as earliest_pie_timestamp
+from CLIP_RESULTS_DATA clip
+where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
+  and clip.outcome = 'PRE_EVAL_APPROVED'
+  and clip.statement_number = 18  -- Specific statement filter
+group by clip.account_id
 ```
 
-### Account-Level (Updated - Overall Line)
-**Logic**: Count each unique account only once
-- Account A has PIE at Stmt 18 AND Stmt 26 → Count 1
-- If Account A collects income, it counts as 1 success (not 2)
-- **Total**: 1 PIE account
+### 2. Statement Range Aggregation (Stmt 42+, Overall 18+)
+**What it is**: Aggregate across multiple statement numbers, deduplicate accounts
 
-**Use Case**: Portfolio-wide KPIs, unique customer counts
+**Example**:
+- Stmt 42+: Accounts at Stmt 42, 43, 44, 45, ... in April 2025 (deduplicated)
+- Overall 18+: Accounts at Stmt 18, 19, 20, 21, ... in April 2025 (deduplicated)
 
-**Example Query**:
+**Why deduplication matters here**: While most statements have only a few accounts (18, 26, 34 have ~100-900 each), there are many statements ≥42 with very small populations. Aggregating them gives better statistical power.
+
+**SQL Pattern**:
 ```sql
--- Each row = one unique account (deduped across statements)
-select count(distinct account_id) as unique_pie_accounts
-from pie_accounts
+select
+    clip.account_id,
+    min(clip.evaluated_timestamp) as earliest_pie_timestamp  -- Earliest across all Stmt ≥42
+from CLIP_RESULTS_DATA clip
+where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
+  and clip.outcome = 'PRE_EVAL_APPROVED'
+  and clip.statement_number >= 42  -- Statement range
+group by clip.account_id  -- Deduplicate across statements
 ```
 
-## Results Comparison (April 2025)
+## Results (April 2025 Cohort)
 
-### Statement-Level Aggregation (OLD)
-- **PIE Instances**: 1,388 (905+140+206+137)
-- **Collected**: 1,047 (759+77+132+79)
-- **Rate**: 75.4%
-- **Interpretation**: "Of all PIE instances across statements, 75.4% collected income"
+### Individual Statements (Non-Overlapping)
+- **Stmt 18**: 905 accounts → 759 collected (83.9%)
+- **Stmt 26**: 140 accounts → 77 collected (55.0%)
+- **Stmt 34**: 206 accounts → 132 collected (64.1%)
+- **Stmt 42**: 137 accounts → 79 collected (57.7%)
 
-### Account-Level Aggregation (NEW)
-- **Unique PIE Accounts**: 1,244
-- **Collected**: 732
-- **Rate**: 58.8%
-- **Interpretation**: "Of unique customers who had PIE, 58.8% collected income"
+### Aggregated Ranges
+- **Stmt 42+**: 9,557 unique accounts → 5,627 collected (58.7% at Month 8)
+- **Overall Stmt 18+**: 11,482 unique accounts → 10,005 succeeded (87.2% success rate at Month 8)
 
-## Why the Difference?
-
-The statement-level rate (75.4%) is higher because:
-1. **Good customers appear multiple times**: Accounts that collect income tend to appear at multiple statements (they're progressing through the program)
-2. **Double-counting success**: If Account A collects income and appears at 2 statements, both instances count as "success"
-3. **Missing the non-responders**: Some accounts only appear at 1 statement and don't collect
-
-Example:
-- 100 accounts total
-- 50 "good" accounts collect income and appear at 2 statements each = 100 successful instances
-- 50 "bad" accounts don't collect and appear at 1 statement each = 50 failed instances
-- **Statement-level**: 100/(100+50) = 66.7%
-- **Account-level**: 50/100 = 50.0%
-
-## Which Should You Use?
-
-**Use Statement-Level** when:
-- Analyzing specific statement performance (Stmt 18 vs Stmt 26)
-- Understanding statement-specific interventions
-- Discrete statement comparisons
-
-**Use Account-Level** when:
-- Reporting portfolio-wide KPIs
-- Counting unique customers
-- Avoiding double-counting
-- Understanding true customer behavior
+**Note**: "Success" = Approved Outright OR PIE with Income Collected
 
 ## Updated Results (30-Day Rolling Windows)
 
@@ -112,16 +111,24 @@ Example:
 - New Month 0 (30-day): 35.5% (+5.0pp improvement!)
 - This shows that many accounts collected income in days 1-30, but were previously counted in "Month 1" due to calendar boundary effects
 
-## Updated Visualization
+## Visualization Structure
 
-The updated visualization now shows:
-- **Individual statement lines (18, 26, 34, 42)**: Statement-level with 30-day windows
-  - "Of accounts with PIE at Stmt 18, what % collected in each 30-day window?"
-- **Overall Stmt 18+ line**: Account-level with 30-day windows
-  - "Of unique accounts with PIE at any Stmt 18+, what % collected?"
-  - Label: "Overall Stmt 18+ (Acct-Level)"
-  - Uses 30-day rolling windows for fair comparison
-  - **Final rate: 58.8%** (Month 8 = 211-240 days after PIE)
+The visualizations show:
+
+### Success Rate Chart (Approved + PIE with Income)
+- **Stmt 18**: 905 accounts at Stmt 18 only (Red line) → 91.4% success by Month 8
+- **Stmt 26**: 140 accounts at Stmt 26 only (Blue line) → 76.4% success by Month 8
+- **Stmt 34**: 206 accounts at Stmt 34 only (Green line) → 81.3% success by Month 8
+- **Stmt 42+**: 9,557 accounts at ANY Stmt ≥42 (Orange line) → 80.9% success by Month 8
+- **Overall Stmt 18+**: 11,482 accounts at ANY Stmt ≥18 (Black dashed) → 87.2% success by Month 8
+
+### PIE Collection Rate Chart (PIE accounts only)
+- **Stmt 18**: Of 905 PIE accounts at Stmt 18, 83.9% collected income
+- **Stmt 26**: Of 140 PIE accounts at Stmt 26, 55.0% collected income
+- **Stmt 34**: Of 206 PIE accounts at Stmt 34, 64.1% collected income
+- **Overall Stmt 18+**: Of 9,589 PIE accounts at ANY Stmt ≥18, 58.7% collected income
+
+**All lines use 30-day rolling windows** for fair time comparison.
 
 ## Files Updated
 

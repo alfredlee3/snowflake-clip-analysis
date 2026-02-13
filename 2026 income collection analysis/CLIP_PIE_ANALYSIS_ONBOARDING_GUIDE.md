@@ -48,64 +48,73 @@ An account is considered **successful** if:
 
 ---
 
-## Methodology: Account-Level vs Statement-Level
+## Methodology: Understanding the Analysis Approach
 
-### Statement-Level (For Individual Statements)
-**What it means**: Count each account once per statement within the cohort
-- Account A at Stmt 18 in April 2025 → Count 1
-- Account A at Stmt 26 in April 2025 → **Cannot happen** (statements are sequential)
+**IMPORTANT CLARIFICATION**: All lines in our analysis use **account-level methodology** - each unique account is counted exactly once within its scope.
 
-**When to use**:
-- Comparing performance across specific statement numbers (18, 26, 34)
-- Understanding statement-specific behavior
+### Key Insight: No Overlap in April 2025 Cohort
+
+Since we filter to `statement_end_dt = '2025-04-01'` (April 2025), each account can only appear at **ONE** statement number in that month. Statements are sequential milestones in an account's lifecycle, so:
+
+- Account A at Stmt 18 in April 2025 ✓
+- Account A at Stmt 26 in April 2025 ✗ **Cannot happen** (would be a different month)
+- Account A at Stmt 34 in April 2025 ✗ **Cannot happen** (would be a different month)
+
+**This means Stmt 18, 26, and 34 represent completely non-overlapping populations in the April 2025 cohort.**
+
+### The Two Types of Analysis
+
+#### 1. Specific Statement Filter (Stmt 18, 26, 34)
+**What it means**: Filter to accounts at a specific statement number, count each account once
+- **Stmt 18**: Unique accounts at Stmt 18 in April 2025
+- **Stmt 26**: Unique accounts at Stmt 26 in April 2025
+- **Stmt 34**: Unique accounts at Stmt 34 in April 2025
+
+**These are non-overlapping sets** - an account appears in only one of these groups.
 
 **SQL Pattern**:
 ```sql
 select
     clip.statement_number,
     clip.account_id,
-    -- Use earliest timestamp at THIS statement
     min(clip.evaluated_timestamp) as earliest_pie_timestamp
 from CLIP_RESULTS_DATA clip
 where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
   and clip.outcome = 'PRE_EVAL_APPROVED'
-  and clip.statement_number = 18  -- Specific statement
+  and clip.statement_number = 18  -- Specific statement filter
 group by clip.statement_number, clip.account_id
 ```
 
-### Account-Level (For Aggregated Views)
-**What it means**: Count each unique account once, regardless of how many statements they appear at
-- Account A at Stmt 18 → Count 1
-- Account A at Stmt 26 → **Same account**, still count 1 total
-- Account A at Stmt 42 → **Same account**, still count 1 total
+#### 2. Statement Range Aggregation (Stmt 42+, Overall 18+)
+**What it means**: Aggregate across multiple statement numbers, count each unique account once
+- **Stmt 42+**: Unique accounts at ANY statement ≥42 in April 2025
+- **Overall Stmt 18+**: Unique accounts at ANY statement ≥18 in April 2025
 
-**When to use**:
-- Overall Stmt 18+ analysis (all statements ≥18)
-- Stmt 42+ analysis (all statements ≥42)
-- Portfolio-wide KPIs
-- Avoiding double-counting unique customers
+**These require deduplication** because we're aggregating across statement ranges.
 
 **SQL Pattern**:
 ```sql
 select
     clip.account_id,
-    -- Use EARLIEST timestamp across ALL statements in scope
+    -- Use EARLIEST timestamp across ALL statements in the range
     min(clip.evaluated_timestamp) as earliest_pie_timestamp
 from CLIP_RESULTS_DATA clip
 where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
   and clip.outcome = 'PRE_EVAL_APPROVED'
-  and clip.statement_number >= 18  -- ALL statements 18+
-group by clip.account_id  -- Note: NO statement_number in GROUP BY
+  and clip.statement_number >= 18  -- Statement range (all Stmt 18+)
+group by clip.account_id  -- Deduplicate across statements
 ```
 
 ### Visual Representation in Charts
 
 **Our Standard Visualization Includes:**
-1. **Stmt 18** (account-level within Stmt 18 only) - Red line
-2. **Stmt 26** (account-level within Stmt 26 only) - Blue line
-3. **Stmt 34** (account-level within Stmt 34 only) - Green line
-4. **Stmt 42+** (account-level across ALL Stmt ≥42) - Orange line
-5. **Overall Stmt 18+** (account-level across ALL Stmt ≥18) - Black dashed line
+1. **Stmt 18** - Accounts at Stmt 18 only (Red line)
+2. **Stmt 26** - Accounts at Stmt 26 only (Blue line)
+3. **Stmt 34** - Accounts at Stmt 34 only (Green line)
+4. **Stmt 42+** - Accounts at ANY Stmt ≥42 (Orange line, aggregated)
+5. **Overall Stmt 18+** - Accounts at ANY Stmt ≥18 (Black dashed line, aggregated)
+
+**Note**: Lines 1-3 are non-overlapping populations. Lines 4-5 aggregate across statement ranges.
 
 **Special Indicators in Code**:
 - `statement_number = 442` → Stmt 42+ (all statements ≥42)
