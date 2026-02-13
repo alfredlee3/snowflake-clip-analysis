@@ -86,23 +86,27 @@ group by clip.statement_number, clip.account_id
 ```
 
 #### 2. Statement Range Aggregation (Stmt 42+, Overall 18+)
-**What it means**: Aggregate across multiple statement numbers, count each unique account once
-- **Stmt 42+**: Unique accounts at ANY statement ≥42 in April 2025
-- **Overall Stmt 18+**: Unique accounts at ANY statement ≥18 in April 2025
+**What it means**: Aggregate multiple small statement populations into one analysis group
+- **Stmt 42+**: All accounts at statements 42, 43, 44, 45, ... in April 2025
+- **Overall Stmt 18+**: All accounts at statements 18, 19, 20, 21, ... in April 2025
 
-**These require deduplication** because we're aggregating across statement ranges.
+**Why use statement ranges?**
+- Stmt 42, 43, 44, etc. individually have very small populations (~10-50 accounts each)
+- Aggregating provides better statistical power and shows overall late-stage behavior
+- Even within the range, each account only appears at ONE statement in April 2025
+
+**Note**: The `group by clip.account_id` is a safety mechanism for rare edge cases (if an account somehow has multiple statements in the same month), but in practice each account appears only once.
 
 **SQL Pattern**:
 ```sql
 select
     clip.account_id,
-    -- Use EARLIEST timestamp across ALL statements in the range
-    min(clip.evaluated_timestamp) as earliest_pie_timestamp
+    min(clip.evaluated_timestamp) as earliest_pie_timestamp  -- Safety: earliest if multiple
 from CLIP_RESULTS_DATA clip
 where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
   and clip.outcome = 'PRE_EVAL_APPROVED'
-  and clip.statement_number >= 18  -- Statement range (all Stmt 18+)
-group by clip.account_id  -- Deduplicate across statements
+  and clip.statement_number >= 18  -- Statement range filter
+group by clip.account_id  -- Safety mechanism (usually no effect in single-month cohort)
 ```
 
 ### Visual Representation in Charts

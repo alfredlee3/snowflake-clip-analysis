@@ -65,24 +65,29 @@ group by clip.account_id
 ```
 
 ### 2. Statement Range Aggregation (Stmt 42+, Overall 18+)
-**What it is**: Aggregate across multiple statement numbers, deduplicate accounts
+**What it is**: Aggregate across multiple statement numbers to combine many small populations
 
 **Example**:
-- Stmt 42+: Accounts at Stmt 42, 43, 44, 45, ... in April 2025 (deduplicated)
-- Overall 18+: Accounts at Stmt 18, 19, 20, 21, ... in April 2025 (deduplicated)
+- Stmt 42+: All accounts at Stmt 42, 43, 44, 45, ... in April 2025
+- Overall 18+: All accounts at Stmt 18, 19, 20, 21, ... in April 2025
 
-**Why deduplication matters here**: While most statements have only a few accounts (18, 26, 34 have ~100-900 each), there are many statements ≥42 with very small populations. Aggregating them gives better statistical power.
+**Why aggregate statement ranges?**: While Stmt 18, 26, and 34 each have substantial populations (~100-900 accounts), there are many statements ≥42 with very small populations (10-50 accounts each). Aggregating them provides:
+- Better statistical power
+- Overall late-stage account behavior
+- More meaningful sample sizes
+
+**Note on deduplication**: In the April 2025 cohort, each account appears at only ONE statement number (even within the ≥42 range). The `group by clip.account_id` in the SQL is a safety mechanism for the rare edge case where an account might have multiple statements ending in the same month, but this is effectively a no-op in practice.
 
 **SQL Pattern**:
 ```sql
 select
     clip.account_id,
-    min(clip.evaluated_timestamp) as earliest_pie_timestamp  -- Earliest across all Stmt ≥42
+    min(clip.evaluated_timestamp) as earliest_pie_timestamp  -- Safety: earliest if multiple
 from CLIP_RESULTS_DATA clip
 where date_trunc(month, stmt.statement_end_dt) = '2025-04-01'
   and clip.outcome = 'PRE_EVAL_APPROVED'
-  and clip.statement_number >= 42  -- Statement range
-group by clip.account_id  -- Deduplicate across statements
+  and clip.statement_number >= 42  -- Statement range filter
+group by clip.account_id  -- Safety mechanism (usually no effect)
 ```
 
 ## Results (April 2025 Cohort)
