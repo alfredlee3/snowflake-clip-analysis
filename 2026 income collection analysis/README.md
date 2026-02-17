@@ -33,13 +33,15 @@ Python scripts for running queries and generating visualizations:
 - **`visualize_cohort_comparison.py`** - Creates cohort comparison charts (Mar-May 2025)
 - **`visualize_income_collection_over_time.py`** - Creates combined time series visualization
 - **`visualize_success_rate_over_time.py`** - Creates overall success rate chart (Approved + PIE with Income)
+- **`visualize_success_rate_over_time_cohort_comparison.py`** - Multi-cohort comparison (Mar/Apr/May 2025)
 - **`visualize_pie_income_account_level.py`** - Creates PIE income collection rate chart (account-level)
 - **`export_chart_data_account_level.py`** - Exports account-level data to CSV for manual analysis
 
 ### `visualizations/`
 Generated charts:
 
-- **`success_rate_over_time.png`** - Overall success rate progression (Approved + PIE with Income)
+- **`success_rate_over_time.png`** - Overall success rate progression (Approved + PIE with Income) - April 2025
+- **`success_rate_cohort_comparison.png`** - Multi-cohort comparison (Mar/Apr/May 2025) - Overall success rates
 - **`pie_income_collection_account_level.png`** - PIE-specific collection rates over time
 - **`pie_income_collection_over_time.png`** - Time progression + cohort comparison
 - **`pie_cohort_comparison_visualization.png`** - Detailed cohort comparison (4 panels)
@@ -58,16 +60,19 @@ Generated charts:
 - Peak activity in Month 0 (59.4% collect immediately)
 - Strong early momentum: 70.4% collected by Month 1
 
-### Statement 42 (Lowest Performance)
-- **Success Rate:** 87.4% (April 2025)
-- **PIE Income Collection Rate:** 57.7%
-- Slow start (24.8% in Month 0) but steady gains through Month 8
-- Late momentum: +25.6pp from Month 1 to 8
+### Statement 42+ (Late-Stage Accounts)
+- **Success Rate:** 80.9% (April 2025)
+- **PIE Income Collection Rate:** 58.7%
+- Aggregates all statements ≥42 for better statistical power
+- Represents 9,557 unique accounts in April 2025 cohort
 
-### Cohort Stability (Mar-May 2025)
-- Success rates: 83.5% - 95.2% (spread: 11.7%)
-- PIE income collection rates: 51.3% - 85.8% (spread: 34.5%)
-- Consistent patterns across cohorts despite different statement populations
+### Cohort Consistency (Mar-May 2025)
+**Overall Stmt 18+ Success Rates (Month 8):**
+- Mar 2025: 86.4% (27,837 accounts)
+- Apr 2025: 86.1% (28,520 accounts)
+- May 2025: 85.8% (28,856 accounts)
+
+**Key Insight:** Remarkable consistency across cohorts validates PIE income collection patterns are stable and reliable for forecasting
 
 ## Important Notes
 
