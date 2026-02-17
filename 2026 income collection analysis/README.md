@@ -27,6 +27,7 @@ SQL queries for extracting PIE income collection data from Snowflake:
 ### `python/`
 Python scripts for running queries and generating visualizations:
 
+**Analysis & Visualization:**
 - **`run_income_tracking.py`** - Runs single statement analysis and displays formatted results
 - **`run_multi_statement_analysis.py`** - Runs multi-statement comparison analysis
 - **`pie_income_collection_visualization.py`** - Creates 4-panel visualization for single statement
@@ -37,20 +38,35 @@ Python scripts for running queries and generating visualizations:
 - **`visualize_pie_income_account_level.py`** - Creates PIE income collection rate chart (account-level)
 - **`export_chart_data_account_level.py`** - Exports account-level data to CSV for manual analysis
 
-### `visualizations/`
-Generated charts:
+**Export & Integration:**
+- **`export_success_rate_for_google_sheets.py`** - Exports success rate data to CSV for Google Sheets
+- **`upload_to_google_sheets.py`** - Automated upload to Google Sheets with embedded charts
+- **`create_powerpoint_presentation.py`** - Creates PowerPoint presentation with embedded chart data
 
+### `visualizations/`
+Generated charts and exports:
+
+**Image Visualizations:**
 - **`success_rate_over_time.png`** - Overall success rate progression (Approved + PIE with Income) - April 2025
 - **`success_rate_cohort_comparison.png`** - Multi-cohort comparison (Mar/Apr/May 2025) - Overall success rates
 - **`pie_income_collection_account_level.png`** - PIE-specific collection rates over time
 - **`pie_income_collection_over_time.png`** - Time progression + cohort comparison
 - **`pie_cohort_comparison_visualization.png`** - Detailed cohort comparison (4 panels)
 - **`pie_income_collection_visualization.png`** - Single statement deep dive
+
+**Data Exports:**
 - **`pie_income_data_account_level_all_statements.csv`** - Exported data for all statements
+- **`success_rate_google_sheets.csv`** - Wide format data optimized for Google Sheets charting
+- **`success_rate_detailed_google_sheets.csv`** - Detailed metrics for Google Sheets import
+
+**Presentations:**
+- **`PIE_Success_Rate_Analysis.pptx`** - PowerPoint presentation with embedded chart data (not images)
 
 ### Documentation
 - **`CLIP_PIE_ANALYSIS_ONBOARDING_GUIDE.md`** - Comprehensive guide for analysts and AI assistants
 - **`ACCOUNT_VS_STATEMENT_LEVEL_METHODOLOGY.md`** - Methodology documentation and 30-day rolling windows explanation
+- **`GOOGLE_SHEETS_INTEGRATION.md`** - Guide for exporting data to Google Sheets with embedded charts
+- **`POWERPOINT_INTEGRATION.md`** - Guide for creating PowerPoint presentations with embedded chart data
 
 ## Key Findings
 
@@ -73,6 +89,25 @@ Generated charts:
 - May 2025: 85.8% (28,856 accounts)
 
 **Key Insight:** Remarkable consistency across cohorts validates PIE income collection patterns are stable and reliable for forecasting
+
+## Integration Options
+
+Export your analysis results to different formats:
+
+### Google Sheets
+- **Manual Import**: Export CSV and import to Google Sheets (5 minutes)
+- **Automated Upload**: Use Google Sheets API for automated uploads with embedded charts
+- See [GOOGLE_SHEETS_INTEGRATION.md](GOOGLE_SHEETS_INTEGRATION.md) for details
+
+### PowerPoint
+- **Automated Generation**: Create PowerPoint presentation with embedded chart data (not images)
+- Charts are native PowerPoint objects that can be edited and updated
+- See [POWERPOINT_INTEGRATION.md](POWERPOINT_INTEGRATION.md) for details
+
+### Python Visualizations
+- Run visualization scripts to generate PNG images
+- Saved to `visualizations/` folder
+- Can be embedded in reports, emails, or dashboards
 
 ## Important Notes
 
